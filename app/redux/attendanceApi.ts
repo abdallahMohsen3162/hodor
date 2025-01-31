@@ -8,11 +8,11 @@ export const attendanceApi = createApi({
   baseQuery: fetchBaseQuery({
     baseUrl: API_BASE_URL,
     prepareHeaders: (headers, { getState }) => {
-      const token = (getState() as RootState).auth.token
+      const token = (getState() as RootState).auth.token;
       if (token) {
-        headers.set("authorization", `Bearer ${token}`)
+        headers.set("authorization", `Bearer ${token}`);
       }
-      return headers
+      return headers;
     },
   }),
   tagTypes: ["Attendance"],

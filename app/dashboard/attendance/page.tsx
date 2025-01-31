@@ -20,7 +20,7 @@ export default function AttendanceManagement() {
   const [center, setCenter] = useState<any>();
   const [centerList, setCenterList] = useState([]);
   const [group, setGroup] = useState<any>();
-  const [sessionStarted, setSessionStarted] = useState(false);
+  const [sessionStarted, setSessionStarted] = useState<"notStarted" | "started" | "ended">("notStarted");
   const [weak, setWeakId] = useState<any>();
   const {data: attendance, refetch} = useGetAttendanceQuery({group_id: group, week_id: weak, academic_year: academicYear});
   console.log(weak, group, academicYear);
@@ -42,8 +42,13 @@ export default function AttendanceManagement() {
 
   const Session = async (action: string) => {
     console.log(group, weak, academicYear);
-    if(!group || !weak || !academicYear) return
-    setSessionStarted(true)
+    if(!group || !weak) return
+    if(action == "start_recording") {
+      setSessionStarted("started")
+    }else{
+      setSessionStarted("ended")
+    }
+
     try {
       await addAttendance({
         action,
@@ -52,6 +57,7 @@ export default function AttendanceManagement() {
         academic_year: academicYear,
         student_id: '',
         excuse_reason: '',
+        student_state: sessionStarted == "ended" ? 'late' : 'attended'
 
       }).then((result) => {
         refetch()
@@ -75,6 +81,27 @@ export default function AttendanceManagement() {
     }
     setOpenWeakModal(false)
   }
+
+
+  const handleManualAction = async () => {
+    try {
+      await addAttendance({
+        action: 'mark_attended',
+        group_id: group,
+        week_id: weak,
+        student_id: stuNumber,
+        excuse_reason: '',
+        student_state: 'attended'
+      }).then((result) => {
+        refetch()
+        setStuNumber('')
+      })
+    } catch (error) {
+      
+    }
+  }
+
+  
   const handleAttendance = async (action: string, excuse_reason: string) => {
     console.log(selectedStudent);
     if(!selectedStudent) return
@@ -87,6 +114,7 @@ export default function AttendanceManagement() {
         academic_year: selectedStudent?.academic_year,
         student_id: selectedStudent?.student_id,
         excuse_reason: excuse_reason,
+        student_state: sessionStarted == "ended" ? 'late' : 'attended'
       }).then((result) => {
         refetch()
         setSelectedStudent(null)
@@ -161,16 +189,16 @@ export default function AttendanceManagement() {
       </div> */}
       <div className="flex gap-4 mb-4">
         <button
-          disabled={sessionStarted}
-          className={`bg-blue-600 px-4 py-2 rounded ${sessionStarted ? 'bg-gray-600' : ''}`}
+          disabled={sessionStarted == "started"}
+          className={`bg-blue-600 px-4 py-2 rounded ${sessionStarted  == "started"? 'bg-gray-600' : ''}`}
           onClick={() => Session('start_recording')}
         >
           بدء تسجيل الحضور
         </button>
         <button
           onClick={() => Session('end_recording')}
-          disabled={!sessionStarted}
-          className={`bg-gray-600 px-4 py-2 rounded ${sessionStarted ? 'bg-blue-600' : ''}`}
+          disabled={sessionStarted != "started"}
+          className={`bg-gray-600 px-4 py-2 rounded ${sessionStarted == "started" ? 'bg-blue-600' : ''}`}
         >
           إنهاء تسجيل الحضور
         </button>
@@ -178,7 +206,9 @@ export default function AttendanceManagement() {
       <div className="bg-gray-800 p-4 rounded mb-4">
         <h3 className="text-lg font-bold">إدخال يدوي</h3>
         <input onChange={(e) => setStuNumber(e.target.value)} type="text" placeholder="أدخل رقم" className="bg-gray-700 p-2 rounded text-white w-full mt-2" />
-        <button className="bg-green-600 px-4 py-2 rounded mt-2 w-full">تسجيل حضور</button>
+        <button 
+        onClick={() => handleManualAction()}
+        className="bg-green-600 px-4 py-2 rounded mt-2 w-full">تسجيل حضور</button>
       </div>
       <table className="w-full border-collapse mt-4">
   <thead>
