@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import { Modal } from "./Modal";
 import { useGetCentersQuery } from "@/app/api/centersApi";
 import { useGetAttendanceQuery } from "@/app/redux/attendanceApi";
+
 export default function AttendanceManagement() {
   const [academicYear, setAcademicYear] = useState<string>("");
   const [stuNumber, setStuNumber] = useState<string>("");
@@ -21,11 +22,13 @@ export default function AttendanceManagement() {
   const [group, setGroup] = useState<any>();
   const [sessionStarted, setSessionStarted] = useState(false);
   const [weak, setWeakId] = useState<any>();
-  const {data: attendance} = useGetAttendanceQuery({group_id: group, week_id: weak, academic_year: academicYear});
+  const {data: attendance, refetch} = useGetAttendanceQuery({group_id: group, week_id: weak, academic_year: academicYear});
   console.log(weak, group, academicYear);
   console.log(attendance, "[][]");
   const [addAttendance] = useAddAttendanceMutation();
   const {data: centers} = useGetCentersQuery({});
+  const [selectedStudent, setSelectedStudent] = useState<any>();
+
   useEffect(() => {
     if (centers) {
       setCenterList(centers);
@@ -36,6 +39,7 @@ export default function AttendanceManagement() {
       setGroups(center.groups);
     }
   }, [center]);
+
   const Session = async (action: string) => {
     console.log(group, weak, academicYear);
     if(!group || !weak || !academicYear) return
@@ -49,7 +53,9 @@ export default function AttendanceManagement() {
         student_id: '',
         excuse_reason: '',
 
-      }).then((result) => {console.log(result)})
+      }).then((result) => {
+        refetch()
+      })
     } catch (error) {
       
     }
@@ -61,17 +67,45 @@ export default function AttendanceManagement() {
         name: weekName,
         start_date: startDate,
         end_date: new Date(Date.parse(startDate) + 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0]
-      }).then((result) => {console.log(result)})
+      }).then((result) => {
+        refetch()
+      })
     } catch (error) {
       
     }
     setOpenWeakModal(false)
   }
+  const handleAttendance = async (action: string, excuse_reason: string) => {
+    console.log(selectedStudent);
+    if(!selectedStudent) return
+    
+    try {
+      await addAttendance({
+        action,
+        group_id: group,
+        week_id: selectedStudent?.week_id,
+        academic_year: selectedStudent?.academic_year,
+        student_id: selectedStudent?.student_id,
+        excuse_reason: excuse_reason,
+      }).then((result) => {
+        refetch()
+        setSelectedStudent(null)
+      })
+    } catch (error) {
+      
+    }
+  }
 
   const handleChangeCenter = (id: string) => {
     setCenter(centers?.find((center: any) => center.id === Number(id)))
-    
+    refetch()
   }
+
+  // start_recording
+  // mark_attended
+  // mark_excused
+  // end_recording
+
   return (
     <div className="bg-gray-900 text-white p-6 rounded-lg w-full max-w-4xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">إدارة الحضور</h2>
@@ -134,7 +168,7 @@ export default function AttendanceManagement() {
           بدء تسجيل الحضور
         </button>
         <button
-          onClick={() => Session('stop_recording')}
+          onClick={() => Session('end_recording')}
           disabled={!sessionStarted}
           className={`bg-gray-600 px-4 py-2 rounded ${sessionStarted ? 'bg-blue-600' : ''}`}
         >
@@ -154,7 +188,6 @@ export default function AttendanceManagement() {
       <th className="p-2">الحالة</th>
       <th className="p-2">وقت الوصول</th>
       <th className="p-2">سبب الغياب</th>
-
     </tr>
   </thead>
   <tbody>
@@ -181,7 +214,13 @@ export default function AttendanceManagement() {
         </td>
         <td className="p-2">{a.arrival_time?.split(".")[0] || "—"}</td>
         <td className="p-2">{a.excuse_reason || "لا يوجد"}</td>
-
+        <td>
+          <button 
+          onClick={() => setSelectedStudent(a)}
+          className="bg-blue-500 text-white py-2 px-4 rounded">
+            تعديل
+          </button>
+        </td>
       </tr>
     ))}
   </tbody>
@@ -218,6 +257,31 @@ export default function AttendanceManagement() {
           </button>
         </div>
       </Modal>
+
+   
+        <Modal isOpen={selectedStudent} onClose={() => setSelectedStudent(null)}>
+          <div className="p-4 bg-black text-white">
+            <h2 className="text-lg font-semibold mb-4 ">
+              Are you sure you want to delete this student?
+            </h2>
+            <button
+              onClick={() => handleAttendance("mark_attended", '')}
+              className="mt-4 w-full bg-green-500 py-2 rounded"
+            >
+              حضر
+            </button>
+            <button
+              onClick={(e) => {
+                const prompt = window.prompt("Enter excuse reason") || "";
+                handleAttendance("mark_excused", prompt)
+              }}
+              className="mt-4 w-full bg-red-500 py-2 rounded"
+            >
+              غايب
+            </button>
+          </div>
+        </Modal>
+
     </div>
   );
 }
