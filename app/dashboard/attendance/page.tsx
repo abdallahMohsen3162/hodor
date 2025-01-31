@@ -44,9 +44,11 @@ export default function AttendanceManagement() {
     console.log(group, weak, academicYear);
     if(!group || !weak) return
     if(action == "start_recording") {
+      sessionStorage.setItem("is_recording", 'true')
       setSessionStarted("started")
     }else{
       setSessionStarted("ended")
+      sessionStorage.setItem("is_recording", 'false')
     }
 
     try {
